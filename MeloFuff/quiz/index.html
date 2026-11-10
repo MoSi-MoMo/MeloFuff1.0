@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="0; url=../index.html?scene=quiz">
+  <title>MeloFuff 音绒仔测试</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 50% 35%, #fffdf6 0, rgba(255, 247, 236, 0) 48%),
+        linear-gradient(160deg, #ffeaf1, #fff6e8 55%, #e8f7f2);
+      font-family: "PingFang SC", "Hiragino Sans GB", sans-serif;
+      color: #b57a8d;
+    }
+    .card {
+      text-align: center;
+      padding: 38px 44px;
+      border-radius: 32px;
+      background: rgba(255, 251, 244, 0.88);
+      box-shadow: 0 20px 40px -28px rgba(170, 95, 120, 0.5);
+    }
+    .dot {
+      width: 54px; height: 50px; margin: 0 auto 18px;
+      border-radius: 48%;
+      background: radial-gradient(circle at 34% 28%, #fff2f6, #ffd3de 45%, #f7b0c3);
+      position: relative;
+    }
+    .dot::before, .dot::after {
+      content: ""; position: absolute; top: 17px; width: 10px; height: 13px;
+      border-radius: 50%; background: #4b2e3a;
+    }
+    .dot::before { left: 12px; } .dot::after { right: 12px; }
+    h1 { font-size: 22px; margin: 0 0 10px; letter-spacing: 1px; font-weight: 500; }
+    p { margin: 0; font-size: 13px; color: #b995a2; }
+    a { display: inline-block; margin-top: 18px; color: #d97c9b; font-size: 13px; }
+  </style>
+  <script>location.replace('../index.html?scene=quiz');</script>
+</head>
+<body>
+  <div class="card">
+    <div class="dot" aria-hidden="true"></div>
+    <h1>MeloFuff 音绒仔测试</h1>
+    <p>正在带你去见音绒仔…</p>
+    <a href="../index.html?scene=quiz">没有自动跳转？点这里</a>
+  </div>
+</body>
+</html>
