@@ -346,9 +346,11 @@ class TitleScene {
     // dreamy far-away candy kingdom, kept quiet behind the menu
     world.drawSky(ctx, t, camX);
     const far = world.farTile;
-    let off = -((camX * 0.08) % far.width);
-    if (off > 0) off -= far.width;
-    for (let x = off; x < W + far.width; x += far.width) ctx.drawImage(far, x, 0);
+    const farW = far.logicalW || far.width;
+    const farH = far.logicalH || far.height;
+    let off = -((camX * 0.08) % farW);
+    if (off > 0) off -= farW;
+    for (let x = off; x < W + farW; x += farW) ctx.drawImage(far, x, 0, farW, farH);
 
     ctx.save();
     ctx.translate(fx, 0);

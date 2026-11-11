@@ -22,10 +22,19 @@ class MeloGame {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.maxRenderCap = Math.min(window.devicePixelRatio || 1, 1.5);
+    this.ctx.imageSmoothingEnabled = true;
+    this.ctx.imageSmoothingQuality = 'high';
+    const nativeDpr = window.devicePixelRatio || 1;
+    this.maxRenderCap = Math.min(nativeDpr, 3);
+    // keep at least 2x on retina phones so text and edges stay crisp;
+    // only drop below that on genuinely low-DPI devices.
+    this.minRenderCap = Math.min(this.maxRenderCap, Math.max(1, Math.min(2.5, nativeDpr)));
     this.renderCap = this.maxRenderCap;
     this.dpr = this.maxRenderCap;
     this.perfAccum = 0;
+    this.perfWarmup = 2.5;
+    this.lowPerfStreak = 0;
+    this.highPerfStreak = 0;
     this.view = { scale: 1, ox: 0, oy: 0, cssW: 0, cssH: 0 };
     this.frameX = 0;
     this.playAnchor = 360;
@@ -575,12 +584,31 @@ class MeloGame {
     this.fpsSmooth = U.lerp(this.fpsSmooth, 1 / Math.max(dt, 0.001), 0.05);
     this.time += dt;
     this.perfAccum += dt;
-    if (this.perfAccum > 2.4) {
+    if (this.perfWarmup > 0) this.perfWarmup -= dt;
+    if (this.perfAccum > 1.2 && this.perfWarmup <= 0) {
       this.perfAccum = 0;
-      // adaptive resolution: stay crisp when the device can afford it
-      if (this.fpsSmooth < 48 && this.renderCap > 1.001) {
-        this.renderCap = Math.max(1, this.renderCap - 0.25);
-        this.resize();
+      // Adaptive resolution with hysteresis: start at full device pixel
+      // density, only step down after sustained low FPS, and climb back
+      // up when the device has headroom. This keeps text crisp on phones.
+      if (this.fpsSmooth < 44) {
+        this.highPerfStreak = 0;
+        this.lowPerfStreak += 1;
+        if (this.lowPerfStreak >= 2 && this.renderCap > this.minRenderCap + 0.001) {
+          this.renderCap = Math.max(this.minRenderCap, this.renderCap - 0.35);
+          this.lowPerfStreak = 0;
+          this.resize();
+        }
+      } else if (this.fpsSmooth > 56) {
+        this.lowPerfStreak = 0;
+        this.highPerfStreak += 1;
+        if (this.highPerfStreak >= 5 && this.renderCap < this.maxRenderCap - 0.001) {
+          this.renderCap = Math.min(this.maxRenderCap, this.renderCap + 0.35);
+          this.highPerfStreak = 0;
+          this.resize();
+        }
+      } else {
+        this.lowPerfStreak = 0;
+        this.highPerfStreak = 0;
       }
     }
     this.flash = Math.max(0, this.flash - dt * 1.7);

@@ -11,6 +11,11 @@ class CandyWorld {
     this.fixedNotes = [];
     this.lollipops = [];
 
+    // Pre-rendered scenery is built at a higher resolution on retina
+    // screens; otherwise the 1x tiles look soft when the canvas is scaled.
+    const dpr = window.devicePixelRatio || 1;
+    this.tileScale = dpr >= 2.5 ? 1.8 : dpr > 1.3 ? 2 : 1;
+
     this.farTile = this._buildFarTile();
     this.midTile = this._buildMidTile();
     this.nearTile = this._buildNearTile();
@@ -148,9 +153,18 @@ class CandyWorld {
      parallax scenery
      ========================================================= */
 
+  _makeTile(w, h) {
+    const f = this.tileScale;
+    const c = U.makeTile(w * f, h * f);
+    c.logicalW = w;
+    c.logicalH = h;
+    const ctx = c.getContext('2d');
+    ctx.scale(f, f);
+    return { c, ctx };
+  }
+
   _buildFarTile() {
-    const c = U.makeTile(1920, 720);
-    const x = c.getContext('2d');
+    const { c, ctx: x } = this._makeTile(1920, 720);
     const r = U.mulberry32(717);
 
     // a whisper of rainbow behind the far hills
@@ -478,8 +492,7 @@ class CandyWorld {
   }
 
   _buildMidTile() {
-    const c = U.makeTile(1800, 720);
-    const x = c.getContext('2d');
+    const { c, ctx: x } = this._makeTile(1800, 720);
     const r = U.mulberry32(991);
 
     const hill = (cx, base, rx, ry, color) => {
@@ -676,8 +689,7 @@ class CandyWorld {
   }
 
   _buildNearTile() {
-    const c = U.makeTile(1500, 720);
-    const x = c.getContext('2d');
+    const { c, ctx: x } = this._makeTile(1500, 720);
     const r = U.mulberry32(335);
 
     // plump gumdrop bushes, mainly for a low foreground fringe
@@ -897,10 +909,12 @@ class CandyWorld {
 
   drawParallax(ctx, camX, t) {
     const drawTile = (tile, speed, yOff = 0) => {
-      const w = tile.width;
+      const w = tile.logicalW || tile.width;
       let off = -((camX * speed) % w);
       if (off > 0) off -= w;
-      for (let x = off; x < U.W + w; x += w) ctx.drawImage(tile, x, yOff);
+      for (let x = off; x < U.W + w; x += w) {
+        ctx.drawImage(tile, x, yOff, w, tile.logicalH || tile.height);
+      }
     };
     drawTile(this.farTile, 0.055, 0);
     drawTile(this.midTile, 0.17, 8);
