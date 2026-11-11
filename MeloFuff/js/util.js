@@ -1,7 +1,8 @@
 /* MeloFuff — shared helpers */
 const U = (() => {
-  const W = 1280;
-  const H = 720;
+  /* W grows on wide landscape phones so the stage can fill the screen. */
+  let W = 1280;
+  let H = 720;
   const TAU = Math.PI * 2;
 
   const FONT_UI = '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
@@ -250,8 +251,16 @@ const U = (() => {
     return arr[Math.floor(rng() * arr.length) % arr.length];
   }
 
+  function setStage(w, h = H) {
+    W = Math.max(1, w);
+    H = Math.max(1, h);
+  }
+
   return {
-    W, H, TAU, FONT_UI, FONT_DISPLAY, FONT_ROUND,
+    get W() { return W; },
+    get H() { return H; },
+    TAU, FONT_UI, FONT_DISPLAY, FONT_ROUND,
+    setStage,
     clamp, lerp, invLerp, smoothstep, damp,
     easeOutCubic, easeInCubic, easeInOutCubic, easeOutQuint, easeOutBack, easeOutElastic, pulse,
     mulberry32, hash, hash2,

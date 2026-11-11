@@ -763,12 +763,16 @@ class QuizScene {
 
   draw(ctx, pointer) {
     this.hit = {};
+    const fx = this.game.frameX || 0;
     this.drawBackground(ctx);
+    ctx.save();
+    ctx.translate(fx, 0);
     this.drawCard(ctx);
     if (this.mode === 'intro') this.drawIntro(ctx, pointer);
     else if (this.mode === 'question') this.drawQuestion(ctx, pointer);
     else if (this.mode === 'voice') this.drawVoice(ctx, pointer);
     else if (this.mode === 'result') this.drawResult(ctx, pointer);
+    ctx.restore();
     this.drawSparkleField(ctx);
   }
 
@@ -786,11 +790,11 @@ class QuizScene {
     // soft floating candy notes
     for (let i = 0; i < 9; i++) {
       const a = t * 0.12 + i * 1.7;
-      const x = 80 + ((i * 173 + t * 8) % 1180);
+      const x = 80 + ((i * 173 + t * 8) % Math.max(1, U.W - 100));
       const y = 90 + Math.sin(a) * 40 + (i % 3) * 150;
       U.drawNote(ctx, x, y, 16 + (i % 3) * 4, Math.sin(a) * 0.3, 'rgba(255,255,255,0.38)', 0.7);
     }
-    const v = ctx.createRadialGradient(640, 360, 240, 640, 360, 760);
+    const v = ctx.createRadialGradient(U.W / 2, 360, 240, U.W / 2, 360, U.W * 0.6);
     v.addColorStop(0, 'rgba(255,248,236,0)');
     v.addColorStop(1, 'rgba(143,85,104,0.14)');
     ctx.fillStyle = v;

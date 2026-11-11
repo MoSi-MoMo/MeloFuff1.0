@@ -27,6 +27,10 @@ class MeloGame {
     this.dpr = this.maxRenderCap;
     this.perfAccum = 0;
     this.view = { scale: 1, ox: 0, oy: 0, cssW: 0, cssH: 0 };
+    this.frameX = 0;
+    this.playAnchor = 360;
+    this.safe = { top: 0, right: 0, bottom: 0, left: 0 };
+    this.pointerRaw = { x: -100, y: -100 };
     this.audio = new MeloAudio();
     this.themeIndex = 0;
     this.character = new MeloFuff(0);
@@ -73,6 +77,13 @@ class MeloGame {
     this.bindEvents();
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 180));
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => this.resize());
+      window.visualViewport.addEventListener('scroll', () => this.resize());
+    }
+    setTimeout(() => this.resize(), 350);
+    setTimeout(() => this.resize(), 1200);
     requestAnimationFrame((ts) => this.loop(ts));
     this.boot();
     window.__MELO__ = this;
@@ -111,20 +122,51 @@ class MeloGame {
   }
 
   resize() {
-    const cssW = window.innerWidth;
-    const cssH = window.innerHeight;
+    const vv = window.visualViewport;
+    const cssW = Math.max(1, Math.round(vv ? vv.width : window.innerWidth));
+    const cssH = Math.max(1, Math.round(vv ? vv.height : window.innerHeight));
+    const aspect = cssW / cssH;
+    let logicalW = 1280;
+    let scale;
+    let ox;
+    let oy = 0;
+    if (aspect >= 1.55) {
+      // landscape phone: keep 720 logical height and grow the visible world
+      // sideways so the game fills the screen edge-to-edge.
+      logicalW = Math.max(1280, Math.min(2200, Math.round(720 * aspect)));
+      scale = cssH / 720;
+      ox = (cssW - logicalW * scale) / 2;
+    } else {
+      scale = Math.min(cssW / 1280, cssH / 720);
+      ox = (cssW - 1280 * scale) / 2;
+      oy = (cssH - 720 * scale) / 2;
+    }
+    U.setStage(logicalW, 720);
     this.dpr = Math.min(window.devicePixelRatio || 1, this.renderCap);
     this.canvas.width = Math.round(cssW * this.dpr);
     this.canvas.height = Math.round(cssH * this.dpr);
     this.canvas.style.width = cssW + 'px';
     this.canvas.style.height = cssH + 'px';
-    const scale = Math.min(cssW / U.W, cssH / U.H);
-    this.view = {
-      scale,
-      ox: (cssW - U.W * scale) / 2,
-      oy: (cssH - U.H * scale) / 2,
-      cssW,
-      cssH,
+    this.frameX = Math.max(0, (logicalW - 1280) / 2);
+    this.playAnchor = this.frameX + 360;
+    this.view = { scale, ox, oy, cssW, cssH };
+
+    const probe = document.getElementById('safe-probe');
+    let ins = { top: 0, right: 0, bottom: 0, left: 0 };
+    if (probe) {
+      const cs = getComputedStyle(probe);
+      ins = {
+        top: parseFloat(cs.paddingTop) || 0,
+        right: parseFloat(cs.paddingRight) || 0,
+        bottom: parseFloat(cs.paddingBottom) || 0,
+        left: parseFloat(cs.paddingLeft) || 0,
+      };
+    }
+    this.safe = {
+      top: ins.top / scale,
+      right: ins.right / scale,
+      bottom: ins.bottom / scale,
+      left: ins.left / scale,
     };
   }
 
@@ -163,19 +205,29 @@ class MeloGame {
     };
   }
 
+  touchBrakePos() {
+    return { x: 92 + this.safe.left, y: 620 };
+  }
+
+  touchJumpPos() {
+    return { x: U.W - 100 - this.safe.right, y: 610 };
+  }
+
   onPointerDown(e) {
     if (!this.ready) return;
     e.preventDefault();
     this.audio.ensureGraph();
-    const p = this.logicalFromEvent(e);
+    const raw = this.logicalFromEvent(e);
+    const p = { x: raw.x - this.frameX, y: raw.y };
+    this.pointerRaw = raw;
     this.pointer.x = p.x;
     this.pointer.y = p.y;
-    this.pointer.inside = true;
+    this.pointer.inside = raw.x >= 0 && raw.x <= U.W && raw.y >= 0 && raw.y <= U.H;
     this.pointer.type = e.pointerType;
-    if (p.x < 0 || p.x > U.W || p.y < 0 || p.y > U.H) return;
+    if (!this.pointer.inside) return;
     this.startPointerTime = performance.now();
 
-    // global mute
+    // global mute (drawn inside the 1280 safe frame)
     if (Math.hypot(p.x - 1218, p.y - 44) < 34) {
       this.audio.toggleMute();
       return;
@@ -216,22 +268,24 @@ class MeloGame {
         return;
       }
       if (this.touch) {
-        if (Math.hypot(p.x - 1180, p.y - 610) < 70) {
+        const jump = this.touchJumpPos();
+        const brake = this.touchBrakePos();
+        if (Math.hypot(raw.x - jump.x, raw.y - jump.y) < 74) {
           this.pressJump(true);
           this.touchJumpPointer = e.pointerId;
           return;
         }
-        if (Math.hypot(p.x - 92, p.y - 620) < 54) {
+        if (Math.hypot(raw.x - brake.x, raw.y - brake.y) < 58) {
           this.brake = true;
           this.touchBrakePointer = e.pointerId;
           return;
         }
         // generous mobile input: tapping the candy scene jumps too
-        if (p.y > 150) {
+        if (raw.y > 150) {
           this.pressJump(true);
           this.touchJumpPointer = e.pointerId;
         }
-      } else if (p.y > 126) {
+      } else if (raw.y > 126) {
         this.pressJump(true);
         this.mouseJumpPointer = e.pointerId;
       }
@@ -274,10 +328,11 @@ class MeloGame {
   }
 
   onPointerMove(e) {
-    const p = this.logicalFromEvent(e);
-    this.pointer.x = p.x;
-    this.pointer.y = p.y;
-    this.pointer.inside = p.x >= 0 && p.x <= U.W && p.y >= 0 && p.y <= U.H;
+    const raw = this.logicalFromEvent(e);
+    this.pointerRaw = raw;
+    this.pointer.x = raw.x - this.frameX;
+    this.pointer.y = raw.y;
+    this.pointer.inside = raw.x >= 0 && raw.x <= U.W && raw.y >= 0 && raw.y <= U.H;
     this.pointer.type = e.pointerType;
     this.updateCursor();
   }
@@ -285,6 +340,7 @@ class MeloGame {
   updateCursor() {
     if (!this.pointer.inside) { this.canvas.style.cursor = 'default'; return; }
     const p = this.pointer;
+    const raw = this.pointerRaw;
     let hand = false;
     if (Math.hypot(p.x - 1218, p.y - 44) < 34) hand = true;
     if (this.state === 'quiz' && this.quiz) {
@@ -296,7 +352,11 @@ class MeloGame {
       if (this.title.charAt(p.x, p.y)) hand = true;
     } else if (this.state === 'playing') {
       if (Math.hypot(p.x - 1160, p.y - 44) < 34) hand = true;
-      if (this.touch && (Math.hypot(p.x - 1180, p.y - 610) < 70 || Math.hypot(p.x - 92, p.y - 620) < 54)) hand = true;
+      if (this.touch) {
+        const jump = this.touchJumpPos();
+        const brake = this.touchBrakePos();
+        if (Math.hypot(raw.x - jump.x, raw.y - jump.y) < 74 || Math.hypot(raw.x - brake.x, raw.y - brake.y) < 58) hand = true;
+      }
     } else if (this.state === 'paused' && this.pauseButtons) {
       const b = this.pauseButtons;
       if (U.pointInRect(p.x, p.y, b.resume) || U.pointInRect(p.x, p.y, b.restart) || U.pointInRect(p.x, p.y, b.title)) hand = true;
@@ -450,7 +510,7 @@ class MeloGame {
       burstTimer: 0,
       expressionT: 0,
     };
-    this.camera.x = -360;
+    this.camera.x = -this.playAnchor;
     this.levelTime = 0;
     this.lastBeat = -1;
     this.beatPulse = 0;
@@ -617,7 +677,7 @@ class MeloGame {
     }
 
     // camera
-    const targetCam = p.x - 360;
+    const targetCam = p.x - this.playAnchor;
     this.camera.x = U.damp(this.camera.x, targetCam, 7.5, dt);
 
     // character animation
@@ -835,7 +895,7 @@ class MeloGame {
       p.squash = 1.06;
     }
     p.runPhase += dt * 8;
-    this.camera.x = U.damp(this.camera.x, p.x - 360, 6, dt);
+    this.camera.x = U.damp(this.camera.x, p.x - this.playAnchor, 6, dt);
     this.updateParticles(dt);
     this.updateToasts(dt);
     this.startBanner = Math.max(0, this.startBanner - dt);
@@ -1177,7 +1237,7 @@ class MeloGame {
     p.y = LEVEL.groundY - LEVEL.feet;
     p.vy = 0;
     p.expressionT = 1;
-    this.camera.x = U.damp(this.camera.x, p.x - 360, 6, dt);
+    this.camera.x = U.damp(this.camera.x, p.x - this.playAnchor, 6, dt);
     this.updateParticles(dt);
     this.updateToasts(dt);
     const cam = this.camera.x;
@@ -1577,6 +1637,8 @@ class MeloGame {
     if (!p) return;
     const t = this.time;
     const T = this.character.theme;
+    ctx.save();
+    ctx.translate(this.frameX, 0);
     const notes = p.notes;
     const combo = p.combo;
     const stamina = p.stamina;
@@ -1833,6 +1895,7 @@ class MeloGame {
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, U.W, U.H);
     }
+    ctx.restore();
   }
 
   currentTutorial() {
@@ -1892,34 +1955,36 @@ class MeloGame {
   drawTouchControls(ctx) {
     const t = this.time;
     const jumpHeld = this.jumpHeld;
+    const brake = this.touchBrakePos();
+    const jump = this.touchJumpPos();
     // brake
     ctx.save();
     ctx.globalAlpha = 0.9;
-    const g = ctx.createRadialGradient(92, 610, 4, 92, 620, 54);
+    const g = ctx.createRadialGradient(brake.x - 4, brake.y - 10, 4, brake.x, brake.y, 54);
     g.addColorStop(0, 'rgba(255,252,246,0.95)');
     g.addColorStop(1, 'rgba(255,235,242,0.8)');
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc(92, 620, 46, 0, U.TAU);
+    ctx.arc(brake.x, brake.y, 46, 0, U.TAU);
     ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.9)';
     ctx.lineWidth = 3;
     ctx.stroke();
-    U.text(ctx, '慢', 92, 618, { size: 22, family: U.FONT_DISPLAY, color: '#C58CA0', align: 'center' });
+    U.text(ctx, '慢', brake.x, brake.y - 2, { size: 22, family: U.FONT_DISPLAY, color: '#C58CA0', align: 'center' });
     // jump
-    const jg = ctx.createRadialGradient(1160, 590, 6, 1180, 610, 74);
+    const jg = ctx.createRadialGradient(jump.x - 20, jump.y - 20, 6, jump.x, jump.y, 74);
     jg.addColorStop(0, jumpHeld ? '#FFD3DF' : '#FFF3E9');
     jg.addColorStop(0.55, '#FFB8CD');
     jg.addColorStop(1, '#F08CA9');
     ctx.fillStyle = jg;
     ctx.beginPath();
-    ctx.arc(1180, 610, 62, 0, U.TAU);
+    ctx.arc(jump.x, jump.y, 62, 0, U.TAU);
     ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.95)';
     ctx.lineWidth = 4;
     ctx.stroke();
-    U.text(ctx, '跳', 1180, 607, { size: 32, family: U.FONT_DISPLAY, color: '#FFFDF7', align: 'center' });
-    U.drawSparkle(ctx, 1208, 574, 5, '#FFF8DD', t, 0.8);
+    U.text(ctx, '跳', jump.x, jump.y - 3, { size: 32, family: U.FONT_DISPLAY, color: '#FFFDF7', align: 'center' });
+    U.drawSparkle(ctx, jump.x + 28, jump.y - 36, 5, '#FFF8DD', t, 0.8);
     ctx.restore();
   }
 
@@ -1930,8 +1995,9 @@ class MeloGame {
   }
 
   drawMute(ctx) {
+    const x = this.frameX + 1218;
     const hov = this.pointer.inside && Math.hypot(this.pointer.x - 1218, this.pointer.y - 44) < 32;
-    this.drawCircleButton(ctx, 1218, 44, 22, hov, () => CandyUI.speaker(ctx, 1218, 44, 10.5, this.audio.muted, '#8F6373'));
+    this.drawCircleButton(ctx, x, 44, 22, hov, () => CandyUI.speaker(ctx, x, 44, 10.5, this.audio.muted, '#8F6373'));
   }
 
   drawCircleButton(ctx, x, y, r, hover, iconFn) {
@@ -1954,6 +2020,8 @@ class MeloGame {
   drawFinishOverlay(ctx) {
     const p = this.player;
     if (!p) return;
+    ctx.save();
+    ctx.translate(this.frameX, 0);
     // fade HUD out during the finish run; gentle title
     U.text(ctx, '抵达糖果城门 ♪', 640, 132, {
       size: 36, family: U.FONT_DISPLAY, color: 'rgba(226,122,151,0.95)', align: 'center',
@@ -1964,12 +2032,14 @@ class MeloGame {
       size: 12, color: 'rgba(159,111,126,0.8)', align: 'center', letterSpacing: 3,
     });
     this.drawToasts(ctx);
+    ctx.restore();
   }
 
   drawPause(ctx) {
     ctx.save();
     ctx.fillStyle = 'rgba(255,247,236,0.72)';
     ctx.fillRect(0, 0, U.W, U.H);
+    ctx.translate(this.frameX, 0);
     const panel = { x: 390, y: 112, w: 500, h: 500 };
     CandyUI.panel(ctx, panel.x, panel.y, panel.w, panel.h, 42, {
       fill: 'rgba(255,251,243,0.96)', border: 'rgba(255,255,255,0.95)',
@@ -2023,7 +2093,7 @@ class MeloGame {
     const p = this.player;
     if (p) {
       p.x = Math.max(0, s * 340);
-      this.camera.x = p.x - 360;
+      this.camera.x = p.x - this.playAnchor;
       p.stamina = 80;
       p.notes = Math.min(75, Math.floor(s * 1.6));
     }

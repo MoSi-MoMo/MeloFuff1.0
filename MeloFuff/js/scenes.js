@@ -338,6 +338,7 @@ class TitleScene {
   draw(ctx, pointer) {
     const t = this.t;
     const W = U.W, H = U.H;
+    const fx = this.game.frameX || 0;
     const camX = 300 + Math.sin(t * 0.12) * 26;
     const world = this.game.world;
 
@@ -348,8 +349,23 @@ class TitleScene {
     let off = -((camX * 0.08) % far.width);
     if (off > 0) off -= far.width;
     for (let x = off; x < W + far.width; x += far.width) ctx.drawImage(far, x, 0);
+
+    ctx.save();
+    ctx.translate(fx, 0);
     this._drawTitleCandy(ctx, t);
+    ctx.restore();
+
     world.drawGround(ctx, camX, t);
+
+    // warm vignette, full bleed
+    const v = ctx.createRadialGradient(W * 0.5, H * 0.42, H * 0.25, W * 0.5, H * 0.5, W * 0.75);
+    v.addColorStop(0, 'rgba(255,247,230,0)');
+    v.addColorStop(1, 'rgba(164,99,117,0.16)');
+    ctx.fillStyle = v;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.translate(fx, 0);
 
     // soft spotlight for the right-hand menu
     const menuGlow = ctx.createRadialGradient(865, 370, 40, 865, 370, 470);
@@ -358,13 +374,6 @@ class TitleScene {
     menuGlow.addColorStop(1, 'rgba(255,249,240,0)');
     ctx.fillStyle = menuGlow;
     ctx.fillRect(520, 0, 760, H);
-
-    // warm vignette
-    const v = ctx.createRadialGradient(W * 0.5, H * 0.42, H * 0.25, W * 0.5, H * 0.5, W * 0.75);
-    v.addColorStop(0, 'rgba(255,247,230,0)');
-    v.addColorStop(1, 'rgba(164,99,117,0.16)');
-    ctx.fillStyle = v;
-    ctx.fillRect(0, 0, W, H);
 
     // a little candy ring around the plush's feet
     this._drawFootCandy(ctx, 350, 574, t);
@@ -443,6 +452,7 @@ class TitleScene {
     U.text(ctx, '第一关 内测原型 · 2026', 1250, 700, {
       size: 11, family: U.FONT_UI, color: 'rgba(154,107,120,0.5)', align: 'right', letterSpacing: 1,
     });
+    ctx.restore();
     ctx.restore();
   }
 
@@ -1009,6 +1019,7 @@ class EndingScene {
 
   draw(ctx, pointer) {
     const t = this.t;
+    const fx = this.game.frameX || 0;
     if (t < 4.9) {
       this._drawHilltop(ctx, t);
     } else if (t < 10.2) {
@@ -1031,6 +1042,8 @@ class EndingScene {
 
     // skip affordance
     if (t < 11.2) {
+      ctx.save();
+      ctx.translate(fx, 0);
       const hov = pointer && pointer.inside && U.pointInRect(pointer.x, pointer.y, this.skipRect);
       CandyUI.panel(ctx, this.skipRect.x, this.skipRect.y, this.skipRect.w, this.skipRect.h, 21, {
         fill: hov ? 'rgba(255,250,242,0.92)' : 'rgba(255,250,242,0.6)',
@@ -1039,6 +1052,7 @@ class EndingScene {
       U.text(ctx, '跳过结尾 ›', this.skipRect.x + this.skipRect.w / 2, this.skipRect.y + this.skipRect.h / 2 + 1, {
         size: 13, color: 'rgba(146,103,117,0.8)', align: 'center',
       });
+      ctx.restore();
     }
 
     // film grain sparkles always
@@ -1050,6 +1064,7 @@ class EndingScene {
 
   _drawHilltop(ctx, t) {
     const W = U.W, H = U.H;
+    const fx = (W - 1280) / 2;
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#FFF6DE');
     g.addColorStop(0.42, '#FFE3EC');
@@ -1057,6 +1072,9 @@ class EndingScene {
     g.addColorStop(1, '#D9F2EE');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.translate(fx, 0);
 
     // low sun and glow
     const sun = ctx.createRadialGradient(900, 330, 20, 900, 330, 260);
@@ -1140,10 +1158,12 @@ class EndingScene {
         });
       }
     };
+    hill(-260, 660, 360, 170, '#B9E8D4');
     hill(120, 640, 330, 150, '#B9E8D4');
     hill(980, 655, 380, 175, '#D8BDF2');
     hill(560, 670, 320, 145, '#FFC6D8');
     hill(1280, 690, 340, 160, '#FFD8AF');
+    hill(1540, 690, 360, 170, '#FFD8AF');
     hill(760, 760, 520, 200, '#FFB9CE');
 
     // candy path winding into the distance
@@ -1230,6 +1250,7 @@ class EndingScene {
       });
       ctx.restore();
     }
+    ctx.restore();
   }
 
   _hilltopLollipop(ctx, x, base, size, color, t) {
@@ -1281,11 +1302,12 @@ class EndingScene {
     const reflection = U.smoothstep(1.3, 3.6, ct);
 
     // a very slow push-in, like a curious camera leaning closer
+    const W = U.W, H = U.H;
     const push = 1 + U.smoothstep(0, 4.8, ct) * 0.07;
     ctx.save();
-    ctx.translate(640, 360);
+    ctx.translate(W / 2, H / 2);
     ctx.scale(push, push);
-    ctx.translate(-640, -360);
+    ctx.translate(-W / 2, -H / 2);
     char.drawCloseup(ctx, {
       time: ct,
       blink,
@@ -1301,7 +1323,7 @@ class EndingScene {
       const a = U.smoothstep(0.4, 0.8, ct) * (1 - U.smoothstep(2.7, 3.2, ct));
       ctx.save();
       ctx.globalAlpha = a;
-      const bx = 1018 + Math.sin(ct * 3) * 6;
+      const bx = W / 2 + 378 + Math.sin(ct * 3) * 6;
       const by = 118;
       ctx.fillStyle = 'rgba(255,251,242,0.92)';
       ctx.beginPath();
@@ -1315,16 +1337,16 @@ class EndingScene {
     }
 
     // gentle light halo
-    const halo = ctx.createRadialGradient(640, 360, 120, 640, 360, 500);
+    const halo = ctx.createRadialGradient(W / 2, H / 2, 120, W / 2, H / 2, 500);
     halo.addColorStop(0, 'rgba(255,252,240,0.22)');
     halo.addColorStop(1, 'rgba(255,252,240,0)');
     ctx.fillStyle = halo;
-    ctx.fillRect(0, 0, U.W, U.H);
+    ctx.fillRect(0, 0, W, H);
 
     // text whispers
     const msgA = U.smoothstep(1.5, 2.4, ct) * (1 - U.smoothstep(3.6, 4.3, ct));
     if (msgA > 0) {
-      U.text(ctx, '它好像看见了什么…', 640, 662, {
+      U.text(ctx, '它好像看见了什么…', W / 2, 662, {
         size: 16, family: U.FONT_DISPLAY, color: 'rgba(123,79,94,0.7)', align: 'center',
         alpha: msgA, letterSpacing: 3,
       });
@@ -1337,8 +1359,8 @@ class EndingScene {
     // cream bloom at the end, opening into the vista
     const a = U.smoothstep(4.25, 5.15, ct);
     if (a <= 0) return;
-    const r = U.lerp(0, 980, U.easeInCubic(a));
-    const g = ctx.createRadialGradient(640, 380, 0, 640, 380, Math.max(1, r));
+    const r = U.lerp(0, U.W * 0.7, U.easeInCubic(a));
+    const g = ctx.createRadialGradient(U.W / 2, U.H * 0.53, 0, U.W / 2, U.H * 0.53, Math.max(1, r));
     g.addColorStop(0, 'rgba(255,252,241,1)');
     g.addColorStop(0.8, 'rgba(255,246,231,0.98)');
     g.addColorStop(1, 'rgba(255,246,231,0)');
@@ -1348,6 +1370,7 @@ class EndingScene {
 
   _drawVista(ctx, vt, pointer) {
     const W = U.W, H = U.H;
+    const fx = (W - 1280) / 2;
     const t = this.t;
     const appear = U.smoothstep(0, 1.0, vt);
     ctx.save();
@@ -1362,6 +1385,9 @@ class EndingScene {
     g.addColorStop(1, '#FFF0DA');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.translate(fx, 0);
 
     // sun + halo
     const sx = 880, sy = 300;
@@ -1524,6 +1550,7 @@ class EndingScene {
     // a wafer castle tucked behind the hills
     this._castle(ctx, 1040, 630, 0.9, t);
 
+    hill(-300, 660, 300, 165, '#BDEBD8', 0, 0.8);
     hill(-40, 640, 280, 160, '#BDEBD8', 0, 0.82);
     hill(210, 665, 265, 165, '#D1B4ED', 2, 0.9);
     hill(450, 650, 235, 150, '#FFBFD3', 3, 0.94);
@@ -1531,6 +1558,7 @@ class EndingScene {
     hill(930, 650, 275, 165, '#B4E6D3', 5, 1);
     hill(1170, 670, 290, 155, '#CDB1EB', 6, 1);
     hill(1380, 690, 265, 170, '#FFBFD3', 7, 1);
+    hill(1580, 680, 300, 170, '#D1B4ED', 0, 1);
 
     // winding path & flags
     ctx.lineCap = 'round';
@@ -1736,6 +1764,7 @@ class EndingScene {
       ctx.restore();
     }
 
+    ctx.restore();
     ctx.restore();
   }
 

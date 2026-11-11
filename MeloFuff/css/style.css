@@ -26,9 +26,11 @@
 html, body {
   width: 100%;
   height: 100%;
+  height: 100dvh;
   margin: 0;
   padding: 0;
   overflow: hidden;
+  overscroll-behavior: none;
   background: #ffe7ee;
 }
 
@@ -44,6 +46,9 @@ body {
 #stage {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
   background:
     radial-gradient(circle at 18% 12%, #fff8ef 0, rgba(255, 248, 239, 0) 42%),
     radial-gradient(circle at 84% 88%, #ffe0eb 0, rgba(255, 224, 235, 0) 48%),
@@ -56,6 +61,21 @@ body {
   height: 100%;
   outline: none;
   cursor: default;
+}
+
+/* invisible probe so JS can read the notch / home-bar insets */
+#safe-probe {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  visibility: hidden;
+  pointer-events: none;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
 }
 
 /* ---------- boot screen ---------- */
@@ -193,25 +213,135 @@ body {
 }
 
 
-/* portrait phones: the candy stage is landscape-first */
+/* portrait phones: a full-screen candy poster asks for landscape */
 #rotate-hint {
   display: none;
   position: fixed;
-  top: max(20px, env(safe-area-inset-top));
+  inset: 0;
+  z-index: 30;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.85), rgba(255, 247, 236, 0) 46%),
+    radial-gradient(circle at 14% 20%, rgba(255, 179, 201, 0.42), rgba(255, 179, 201, 0) 42%),
+    radial-gradient(circle at 86% 82%, rgba(169, 231, 213, 0.4), rgba(169, 231, 213, 0) 46%),
+    linear-gradient(160deg, #ffeaf1 0%, #fff6e8 55%, #e8f7f2 100%);
+  pointer-events: auto;
+}
+
+#rotate-hint::before {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  border: 2px dashed rgba(255, 255, 255, 0.72);
+  border-radius: 30px;
+}
+
+.rotate-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(340px, 84vw);
+  padding: 30px 24px 26px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 14%, rgba(255, 255, 255, 0.95), rgba(255, 246, 235, 0) 62%),
+    linear-gradient(165deg, #fffdf8 0%, #fff4ea 62%, #ffe8ee 100%);
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  border-radius: 30px;
+  box-shadow:
+    0 26px 48px -24px rgba(170, 95, 120, 0.5),
+    inset 0 0 0 4px rgba(255, 255, 255, 0.35);
+}
+
+.rotate-plush {
+  position: relative;
+  width: 96px;
+  height: 90px;
+  border-radius: 48% 48% 46% 46%;
+  background:
+    radial-gradient(circle at 34% 26%, #fff2f5 0%, #ffd3de 42%, #f7b0c3 100%);
+  box-shadow:
+    0 18px 28px -18px rgba(216, 117, 148, 0.55),
+    inset -8px -10px 16px rgba(240, 143, 168, 0.32),
+    inset 6px 8px 14px rgba(255, 255, 255, 0.65);
+}
+
+.rotate-plush::before,
+.rotate-plush::after {
+  content: "";
+  position: absolute;
+  top: 27px;
+  width: 20px;
+  height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 40% 30%, #5f3d4c, #3f2632);
+  box-shadow: inset 2px 3px 4px rgba(0, 0, 0, 0.25);
+}
+.rotate-plush::before { left: 24px; }
+.rotate-plush::after { right: 24px; }
+
+.rotate-plush .eye {
+  position: absolute;
+  top: 33px;
+  width: 8px;
+  height: 9px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.92;
+  z-index: 2;
+}
+.rotate-plush .eye.left { left: 30px; }
+.rotate-plush .eye.right { right: 30px; }
+
+.rotate-plush .mouth {
+  position: absolute;
   left: 50%;
+  bottom: 20px;
+  width: 12px;
+  height: 7px;
+  border-bottom: 2.5px solid #7e4c5e;
+  border-radius: 0 0 12px 12px;
   transform: translateX(-50%);
-  z-index: 8;
-  padding: 9px 18px;
-  border-radius: 999px;
-  background: rgba(255, 251, 244, 0.9);
-  box-shadow: 0 8px 18px -10px rgba(170, 95, 120, 0.35);
+}
+
+.rotate-title {
+  margin-top: 20px;
+  font-family: "ZCOOL KuaiLe", "PingFang SC", sans-serif;
+  font-size: 27px;
+  letter-spacing: 2px;
+  color: var(--pink-deep);
+}
+
+.rotate-sub {
+  margin-top: 10px;
+  font-size: 13px;
+  letter-spacing: 0.8px;
   color: #b4798c;
-  font-size: 12px;
-  letter-spacing: 0.5px;
-  pointer-events: none;
-  white-space: nowrap;
+}
+
+.rotate-arrow {
+  margin-top: 14px;
+  font-family: "Baloo 2", sans-serif;
+  font-size: 40px;
+  line-height: 1;
+  color: var(--pink);
+  animation: turn-hint 2.4s ease-in-out infinite;
+}
+
+@keyframes turn-hint {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(82deg); }
+}
+
+.rotate-note {
+  margin-top: 10px;
+  font-size: 10.5px;
+  letter-spacing: 1.6px;
+  color: rgba(180, 121, 140, 0.7);
 }
 
 @media (orientation: portrait) and (max-width: 900px) {
-  #rotate-hint { display: block; }
+  #rotate-hint { display: grid; }
 }

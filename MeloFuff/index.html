@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#ffe9ef">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>MeloFuff 音绒仔 · 甜糖丘陵</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='34' r='24' fill='%23ffd1dc'/%3E%3Ccircle cx='24' cy='31' r='4' fill='%235b3a4a'/%3E%3Ccircle cx='41' cy='31' r='4' fill='%235b3a4a'/%3E%3Ccircle cx='22.5' cy='29.5' r='1.3' fill='white'/%3E%3Ccircle cx='39.5' cy='29.5' r='1.3' fill='white'/%3E%3Cpath d='M28 40q4 4 8 0' stroke='%235b3a4a' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css">
@@ -13,7 +16,19 @@
   <canvas id="game" aria-label="MeloFuff 音绒仔 第一关 甜糖丘陵"></canvas>
 </div>
 
-<div id="rotate-hint">↻ 横屏体验更佳 · 音绒仔在等你</div>
+<div id="safe-probe" aria-hidden="true"></div>
+
+<div id="rotate-hint" aria-hidden="true">
+  <div class="rotate-card">
+    <div class="rotate-plush">
+      <span class="eye left"></span><span class="eye right"></span><span class="mouth"></span>
+    </div>
+    <div class="rotate-title">请把手机横过来</div>
+    <div class="rotate-sub">横屏后画面会自动铺满整个屏幕</div>
+    <div class="rotate-arrow">↻</div>
+    <div class="rotate-note">横屏游玩 · 声音题可以跳过</div>
+  </div>
+</div>
 
 <div id="boot" class="boot">
   <div class="boot-card">
